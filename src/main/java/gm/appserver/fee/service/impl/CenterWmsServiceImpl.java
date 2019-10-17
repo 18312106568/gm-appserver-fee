@@ -8,6 +8,7 @@ import gm.common.base.annotation.ParamterLog;
 import gm.common.utils.GsonUtils;
 import gm.facade.fee.entity.wms.TransportAddress;
 import gm.facade.fee.entity.wms.TransportBase;
+import gm.facade.fee.service.TransportBaseHangUpService;
 import gm.facade.fee.service.TransportBaseService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.Reference;
@@ -20,6 +21,8 @@ import javax.jws.WebService;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 @Component
@@ -30,8 +33,16 @@ import java.util.List;
 @Slf4j
 public class CenterWmsServiceImpl implements CenterWmsService {
 
+    static final Integer THREAD_LEN = 8;
+
+    static ExecutorService executorService = Executors.newFixedThreadPool(THREAD_LEN);
+
     @Reference(version = "1.0.0")
     TransportBaseService transportBaseService;
+
+
+    @Reference(version = "1.0.0")
+    TransportBaseHangUpService hangUpService;
 
     @ParamterLog
     @Override
@@ -56,6 +67,7 @@ public class CenterWmsServiceImpl implements CenterWmsService {
             //信息修改标志默认为flag
             transportBase.setInformationModificationMark(false);
             transportBase.setLockFlag(false);
+            transportBase.setIsHangUp(Boolean.TRUE);
             TransportResponseVo responseVo = new TransportResponseVo();
             responseVo.setLoadingListId(transportBase.getId().getLoadingListId());
             responseVo.setReceiptId(transportBase.getId().getReceiptId());
@@ -63,24 +75,28 @@ public class CenterWmsServiceImpl implements CenterWmsService {
             try {
                 //查询是否已有签收单数据，对未存在的直接更新
                 TransportBase oldTransportBase = transportBaseService.getTransportBase(transportBase.getId());
-                if(oldTransportBase==null) {
+                if(oldTransportBase==null || !oldTransportBase.getInformationModificationMark()) {
                     transportBaseService.addTransportBase(transportBase);
                 }else{
-                    transportBaseService.addTransportBase(oldTransportBase);
+                    transportBaseService.addTransportBase(transportBase);
                 }
                 responseVo.setMsgty(TransportResponseVo.SUCCESS);
                 responseVo.setMessage(TransportResponseVo.SUCCESS_MSG);
-                continue;
+
             }catch(Exception ex){
                 responseVo.setMsgty(TransportResponseVo.FAIL);
-                responseVo.setMessage(ex.toString());
+                responseVo.setMessage(ex.getMessage());
                 ex.getCause().printStackTrace();
             }
 
             responseVos.add(responseVo);
         }
 
-        //3.将响应结果转为json
+        //3.另起线程挂起签收单
+        HangUpChecker hangUpChecker = new HangUpChecker(hangUpService,transportBaseList);
+        executorService.submit(hangUpChecker);
+
+        //4.将响应结果转为json
         return gson.toJson(responseVos);
     }
 
@@ -113,5 +129,27 @@ public class CenterWmsServiceImpl implements CenterWmsService {
 
         //3.将响应结果转为json
         return gson.toJson(transportResponseVos);
+    }
+
+    /**
+     * 校验签收单是否需要挂起
+     */
+    public static class HangUpChecker implements Runnable {
+
+        private TransportBaseHangUpService hangUpService;
+
+        private List<TransportBase> transportBaseList;
+
+        public HangUpChecker(TransportBaseHangUpService hangUpService
+                ,List<TransportBase> transportBaseList){
+            this.hangUpService = hangUpService;
+            this.transportBaseList = transportBaseList;
+        }
+        @Override
+        public void run() {
+            for(TransportBase transportBase : transportBaseList){
+                hangUpService.hangUpTransportBase(transportBase);
+            }
+        }
     }
 }
