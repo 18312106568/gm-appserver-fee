@@ -6,6 +6,7 @@ import gm.appserver.fee.service.CenterWmsService;
 import gm.appserver.fee.vo.TransportResponseVo;
 import gm.common.base.annotation.ParamterLog;
 import gm.common.utils.GsonUtils;
+import gm.facade.fee.constant.SpecialVehicleType;
 import gm.facade.fee.entity.wms.TransportAddress;
 import gm.facade.fee.entity.wms.TransportBase;
 import gm.facade.fee.service.TransportBaseHangUpService;
@@ -68,7 +69,22 @@ public class CenterWmsServiceImpl implements CenterWmsService {
             transportBase.setInformationModificationMark(false);
             transportBase.setLockFlag(false);
             transportBase.setIsHangUp(Boolean.TRUE);
+            //设置手工导入部门默认值
+            transportBase.setRealVolume(transportBase.getSystemVolume());
+            transportBase.setRealWeight(transportBase.getCommodityWeight());
+            transportBase.setThermometerRecoveryFlag(transportBase.getThermometerDeliveryFlag());
+            transportBase.setFoamBoxNum(transportBase.getFoamBoxSendNum());
+            transportBase.setOvertimeHours(0.0D);
+            transportBase.setTrunkLineReceiveDuration(0.0D);
+            transportBase.setTrunkModel(SpecialVehicleType.NORMAL7_6);
+
+            transportBase.setR
+
+            transportBase.setDeliveryServicer(transportBase.getCarrier());
+
             TransportResponseVo responseVo = new TransportResponseVo();
+
+
             responseVo.setLoadingListId(transportBase.getId().getLoadingListId());
             responseVo.setReceiptId(transportBase.getId().getReceiptId());
 
