@@ -78,7 +78,6 @@ public class CenterWmsServiceImpl implements CenterWmsService {
             transportBase.setTrunkLineReceiveDuration(0.0D);
             transportBase.setTrunkModel(SpecialVehicleType.NORMAL7_6);
 
-            transportBase.setR
 
             transportBase.setDeliveryServicer(transportBase.getCarrier());
 
