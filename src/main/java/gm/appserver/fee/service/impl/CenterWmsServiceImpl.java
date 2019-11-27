@@ -6,7 +6,9 @@ import gm.appserver.fee.service.CenterWmsService;
 import gm.appserver.fee.vo.TransportResponseVo;
 import gm.common.base.annotation.ParamterLog;
 import gm.common.utils.GsonUtils;
+import gm.facade.fee.constant.ReceiptStatus;
 import gm.facade.fee.constant.SpecialVehicleType;
+import gm.facade.fee.constant.WorkingFlagType;
 import gm.facade.fee.entity.wms.TransportAddress;
 import gm.facade.fee.entity.wms.TransportBase;
 import gm.facade.fee.service.TransportBaseHangUpService;
@@ -45,6 +47,9 @@ public class CenterWmsServiceImpl implements CenterWmsService {
     @Reference(version = "1.0.0")
     TransportBaseHangUpService hangUpService;
 
+    static final Long CITY_TRANSPORT = 1L;
+    static final String GZMPC_NAME = "广州医药有限公司";
+
     @ParamterLog
     @Override
     public String addTransportBases(String system,String datas) {
@@ -65,33 +70,22 @@ public class CenterWmsServiceImpl implements CenterWmsService {
 
         //2.调用服务，逐条新增计费基础数据
         for(TransportBase transportBase : transportBaseList){
-            //信息修改标志默认为flag
-            transportBase.setInformationModificationMark(false);
-            transportBase.setLockFlag(false);
-            transportBase.setIsHangUp(Boolean.TRUE);
-            //设置手工导入部门默认值
-            transportBase.setRealVolume(transportBase.getSystemVolume());
-            transportBase.setRealWeight(transportBase.getCommodityWeight());
-            transportBase.setThermometerRecoveryFlag(transportBase.getThermometerDeliveryFlag());
-            transportBase.setFoamBoxNum(transportBase.getFoamBoxSendNum());
-            transportBase.setOvertimeHours(0.0D);
-            transportBase.setTrunkLineReceiveDuration(0.0D);
-            transportBase.setTrunkModel(SpecialVehicleType.NORMAL7_6);
 
-
-            transportBase.setDeliveryServicer(transportBase.getCarrier());
+            defaultTransportBase(transportBase);
 
             TransportResponseVo responseVo = new TransportResponseVo();
-
-
             responseVo.setLoadingListId(transportBase.getId().getLoadingListId());
             responseVo.setReceiptId(transportBase.getId().getReceiptId());
 
             try {
                 //查询是否已有签收单数据，对未存在的直接更新
                 TransportBase oldTransportBase = transportBaseService.getTransportBase(transportBase.getId());
-                if(oldTransportBase==null || !oldTransportBase.getInformationModificationMark()) {
-                    transportBaseService.addTransportBase(transportBase);
+                if(oldTransportBase!=null
+                        && ReceiptStatus.CONFIRM.equals(oldTransportBase.getReceiptStatus())
+                        && !ReceiptStatus.CONFIRM.equals(transportBase.getReceiptStatus())) {
+                    oldTransportBase.setReceiptStatus(transportBase.getReceiptStatus());
+                    oldTransportBase.setPayStatus(transportBase.getPayStatus());
+                    transportBaseService.addTransportBase(oldTransportBase);
                 }else{
                     transportBaseService.addTransportBase(transportBase);
                 }
@@ -144,6 +138,43 @@ public class CenterWmsServiceImpl implements CenterWmsService {
 
         //3.将响应结果转为json
         return gson.toJson(transportResponseVos);
+    }
+
+    /**
+     * 签收单默认值
+     * @param transportBase
+     */
+    private void defaultTransportBase(TransportBase transportBase){
+        //信息修改标志默认为flag
+        transportBase.setInformationModificationMark(false);
+        transportBase.setLockFlag(false);
+        transportBase.setIsHangUp(Boolean.TRUE);
+        //设置手工导入部门默认值
+        transportBase.setRealVolume(transportBase.getSystemVolume());
+        transportBase.setRealWeight(transportBase.getCommodityWeight());
+        transportBase.setThermometerRecoveryFlag(transportBase.getThermometerDeliveryFlag());
+        transportBase.setFoamBoxNum(transportBase.getFoamBoxSendNum());
+        transportBase.setOvertimeHours(0.0D);
+        transportBase.setTrunkLineReceiveDuration(0.0D);
+        transportBase.setTrunkModel(SpecialVehicleType.NORMAL7_6);
+        //温度计回收计费标志、温度计发运标志给默认值
+        if(transportBase.getThermometerDeliveryFlag()==null){
+            transportBase.setThermometerRecoveryFlag(Boolean.FALSE);
+        }
+        if(transportBase.getThermometerRecoveryFlag()==null){
+            transportBase.setThermometerRecoveryFlag(Boolean.FALSE);
+        }
+        if(transportBase.getUnconventionalWorkingFlag()==null){
+            transportBase.setUnconventionalWorkingFlag(WorkingFlagType.NULL);
+        }
+
+        transportBase.setDeliveryServicer(transportBase.getCarrier());
+        transportBase.setOrgLogisticsMode(transportBase.getLogisticsMode());
+        //广州医药城市配送
+        if(GZMPC_NAME.equals(transportBase.getCarrier())
+                && CITY_TRANSPORT.equals(transportBase.getLogisticsMode())){
+            transportBase.setLogisticsMode(10L);
+        }
     }
 
     /**
