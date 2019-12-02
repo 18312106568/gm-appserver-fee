@@ -2,6 +2,7 @@ package gm.appserver.fee.service.impl;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import gm.appserver.fee.queue.TransportSender;
 import gm.appserver.fee.service.CenterWmsService;
 import gm.appserver.fee.vo.TransportResponseVo;
 import gm.common.base.annotation.ParamterLog;
@@ -17,6 +18,7 @@ import gm.facade.fee.service.TransportBaseService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.Reference;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 
@@ -47,6 +49,9 @@ public class CenterWmsServiceImpl implements CenterWmsService {
 
     @Reference(version = "1.0.0")
     TransportBaseHangUpService hangUpService;
+
+    @Autowired
+    TransportSender transportSender;
 
     static final Long CITY_TRANSPORT = 1L;
     static final String GZMPC_NAME = "广州医药有限公司";
@@ -87,13 +92,15 @@ public class CenterWmsServiceImpl implements CenterWmsService {
                             && !ReceiptStatus.CONFIRM.equals(transportBase.getReceiptStatus())) {
                         oldTransportBase.setReceiptStatus(transportBase.getReceiptStatus());
                         oldTransportBase.setPayStatus(transportBase.getPayStatus());
-                        transportBaseService.addTransportBase(oldTransportBase);
+//                        transportBaseService.addTransportBase(oldTransportBase);
                     }
                     oldTransportBase.setCageCarConfirmationFlag(
                             transportBase.getCageCarConfirmationFlag());
-                    transportBaseService.addTransportBase(oldTransportBase);
+                    ///transportBaseService.addTransportBase(oldTransportBase);
+                    transportSender.sendTransportBase(oldTransportBase);
                 }else{
-                    transportBaseService.addTransportBase(transportBase);
+//                    transportBaseService.addTransportBase(transportBase);
+                    transportSender.sendTransportBase(transportBase);
                 }
                 responseVo.setMsgty(TransportResponseVo.SUCCESS);
                 responseVo.setMessage(TransportResponseVo.SUCCESS_MSG);
@@ -108,8 +115,8 @@ public class CenterWmsServiceImpl implements CenterWmsService {
         }
 
         //3.另起线程挂起签收单
-        HangUpChecker hangUpChecker = new HangUpChecker(hangUpService,transportBaseList);
-        executorService.submit(hangUpChecker);
+//        HangUpChecker hangUpChecker = new HangUpChecker(hangUpService,transportBaseList);
+//        executorService.submit(hangUpChecker);
 
         //4.将响应结果转为json
         return gson.toJson(responseVos);

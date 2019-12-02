@@ -55,6 +55,13 @@
              <artifactId>spring-boot-starter-aop</artifactId>
          </dependency>
 
+
+         <!-- mq -->
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-amqp</artifactId>
+         </dependency>
+
          <dependency>
              <groupId>gm.common</groupId>
              <artifactId>gm-common-utils</artifactId>
