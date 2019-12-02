@@ -6,6 +6,7 @@ import gm.appserver.fee.service.CenterWmsService;
 import gm.appserver.fee.vo.TransportResponseVo;
 import gm.common.base.annotation.ParamterLog;
 import gm.common.utils.GsonUtils;
+import gm.facade.fee.constant.FreightPayStatus;
 import gm.facade.fee.constant.ReceiptStatus;
 import gm.facade.fee.constant.SpecialVehicleType;
 import gm.facade.fee.constant.WorkingFlagType;
@@ -80,11 +81,16 @@ public class CenterWmsServiceImpl implements CenterWmsService {
             try {
                 //查询是否已有签收单数据，对未存在的直接更新
                 TransportBase oldTransportBase = transportBaseService.getTransportBase(transportBase.getId());
-                if(oldTransportBase!=null
-                        && ReceiptStatus.CONFIRM.equals(oldTransportBase.getReceiptStatus())
-                        && !ReceiptStatus.CONFIRM.equals(transportBase.getReceiptStatus())) {
-                    oldTransportBase.setReceiptStatus(transportBase.getReceiptStatus());
-                    oldTransportBase.setPayStatus(transportBase.getPayStatus());
+                if(oldTransportBase!=null) {
+                    if(FreightPayStatus.TO_BE_PAY.equals(oldTransportBase.getPayStatus())
+                            && ReceiptStatus.CONFIRM.equals(oldTransportBase.getReceiptStatus())
+                            && !ReceiptStatus.CONFIRM.equals(transportBase.getReceiptStatus())) {
+                        oldTransportBase.setReceiptStatus(transportBase.getReceiptStatus());
+                        oldTransportBase.setPayStatus(transportBase.getPayStatus());
+                        transportBaseService.addTransportBase(oldTransportBase);
+                    }
+                    oldTransportBase.setCageCarConfirmationFlag(
+                            transportBase.getCageCarConfirmationFlag());
                     transportBaseService.addTransportBase(oldTransportBase);
                 }else{
                     transportBaseService.addTransportBase(transportBase);
@@ -168,11 +174,10 @@ public class CenterWmsServiceImpl implements CenterWmsService {
             transportBase.setUnconventionalWorkingFlag(WorkingFlagType.NULL);
         }
 
-        transportBase.setDeliveryServicer(transportBase.getCarrier());
-        transportBase.setOrgLogisticsMode(transportBase.getLogisticsMode());
+        transportBase.setLogisticsMode(transportBase.getOrgLogisticsMode());
         //广州医药城市配送
         if(GZMPC_NAME.equals(transportBase.getCarrier())
-                && CITY_TRANSPORT.equals(transportBase.getLogisticsMode())){
+                && CITY_TRANSPORT.equals(transportBase.getOrgLogisticsMode())){
             transportBase.setLogisticsMode(10L);
         }
     }
@@ -191,6 +196,7 @@ public class CenterWmsServiceImpl implements CenterWmsService {
             this.hangUpService = hangUpService;
             this.transportBaseList = transportBaseList;
         }
+
         @Override
         public void run() {
             for(TransportBase transportBase : transportBaseList){
