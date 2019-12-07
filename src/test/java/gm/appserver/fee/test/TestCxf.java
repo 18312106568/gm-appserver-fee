@@ -2,12 +2,14 @@ package gm.appserver.fee.test;
 
 import com.google.gson.Gson;
 import gm.appserver.fee.service.CenterWmsService;
-import gm.common.utils.GsonUtils;
-import gm.facade.fee.entity.wms.TransportAddress;
-import org.springframework.beans.factory.aspectj.ConfigurableObject;
+import gm.common.generator.IdGenerator;
+
 import gm.facade.fee.entity.wms.TransportBase;
 import org.apache.cxf.jaxws.JaxWsProxyFactoryBean;
 import org.junit.Test;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class TestCxf {
 
@@ -45,5 +47,14 @@ public class TestCxf {
         String result = service.addTransportAddress("3"
                 ,dataStr);
         System.out.println(result);
+    }
+
+    @Test
+    public void testId() throws InterruptedException {
+        Set<Long> longSet = new HashSet<>();
+        for(int i=0;i<10000;i++) {
+            longSet.add(IdGenerator.nextId(2));
+        }
+        System.out.println(longSet.size());
     }
 }

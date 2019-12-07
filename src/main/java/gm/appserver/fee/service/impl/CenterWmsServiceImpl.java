@@ -86,20 +86,14 @@ public class CenterWmsServiceImpl implements CenterWmsService {
             try {
                 //查询是否已有签收单数据，对未存在的直接更新
                 TransportBase oldTransportBase = transportBaseService.getTransportBase(transportBase.getId());
-                if(oldTransportBase!=null) {
-                    if(FreightPayStatus.TO_BE_PAY.equals(oldTransportBase.getPayStatus())
-                            && ReceiptStatus.CONFIRM.equals(oldTransportBase.getReceiptStatus())
-                            && !ReceiptStatus.CONFIRM.equals(transportBase.getReceiptStatus())) {
-                        oldTransportBase.setReceiptStatus(transportBase.getReceiptStatus());
-                        oldTransportBase.setPayStatus(transportBase.getPayStatus());
-//                        transportBaseService.addTransportBase(oldTransportBase);
-                    }
+                // 新签收单以及旧签收单为应付待付一律更新
+                if(oldTransportBase!=null &&
+                        !FreightPayStatus.TO_BE_PAY.equals(oldTransportBase.getPayStatus())) {
+                    oldTransportBase.setReceiptStatus(transportBase.getReceiptStatus());
                     oldTransportBase.setCageCarConfirmationFlag(
                             transportBase.getCageCarConfirmationFlag());
-                    ///transportBaseService.addTransportBase(oldTransportBase);
                     transportSender.sendTransportBase(oldTransportBase);
                 }else{
-//                    transportBaseService.addTransportBase(transportBase);
                     transportSender.sendTransportBase(transportBase);
                 }
                 responseVo.setMsgty(TransportResponseVo.SUCCESS);
